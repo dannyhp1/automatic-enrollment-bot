@@ -5,10 +5,14 @@ from bs4 import BeautifulSoup as bs
 import pync
 import register
 
-def getCS161(twilio_sid, twilio_auth, twilio_phone, personal_phone, courses_to_enroll):
+gotIn161 = False
+gotIn145 = False
+
+def getCS161():
     url = "https://www.reg.uci.edu/perl/WebSoc?YearTerm=2019-14&CoCourse=34210"
     file = urllib2.urlopen(url)
     content = file.read()
+    file.close()
 
     soup = bs(content, 'html.parser')
 
@@ -60,10 +64,11 @@ def getCS161(twilio_sid, twilio_auth, twilio_phone, personal_phone, courses_to_e
     lecture_status = lecture[4]
     discussion_open = False
 
+
     for i in range(1, amount):
         discussion_code = cs161[i][0]
         discussion_open = (int(cs161[i][2]) < int(cs161[i][3])) or cs161[i][4] != 'FULL'
-        if(discussion_open):
+        if(discussion_open and lecture_status != 'FULL'):
             print("=====================================")
             print("Discussion is open ({d_code}) with lecture ({l_code}).".format(d_code = discussion_code, l_code = lecture_code))
             print("=====================================")
@@ -76,7 +81,9 @@ def getCS161(twilio_sid, twilio_auth, twilio_phone, personal_phone, courses_to_e
 
             courses_to_enroll.append(discussion_code)
             courses_to_enroll.append(lecture_code)
+            gotIn161 = True
 
+            [twilio_sid, twilio_auth, twilio_phone, personal_phone] = get_information()
             client = Client(twilio_sid, twilio_auth)
 
             message = client.messages \
@@ -91,10 +98,11 @@ def getCS161(twilio_sid, twilio_auth, twilio_phone, personal_phone, courses_to_e
     if(discussion_open == False):
         print("No discussions were opened.")
 
-def getCS145(twilio_sid, twilio_auth, twilio_phone, personal_phone, courses_to_enroll):
+def getCS145():
     url = "https://www.reg.uci.edu/perl/WebSoc?YearTerm=2019-1&CoCourse=34160"
     file = urllib2.urlopen(url)
     content = file.read()
+    file.close()
 
     soup = bs(content, 'html.parser')
 
@@ -149,7 +157,7 @@ def getCS145(twilio_sid, twilio_auth, twilio_phone, personal_phone, courses_to_e
     for i in range(1, amount):
         discussion_code = cs145[i][0]
         discussion_open = (int(cs145[i][2]) < int(cs145[i][3])) or cs145[i][4] != 'FULL'
-        if(discussion_open and i not in [1, 3, 5, 7]):
+        if(discussion_open and i not in [1, 3, 5, 7] and lecture_status != 'FULL'):
             print("=====================================")
             print("Discussion is not full ({d_code}) with lecture ({l_code}).".format(d_code = discussion_code, l_code = lecture_code))
             print("=====================================")
@@ -162,7 +170,9 @@ def getCS145(twilio_sid, twilio_auth, twilio_phone, personal_phone, courses_to_e
 
             courses_to_enroll.append(discussion_code)
             courses_to_enroll.append(lecture_code)
+            gotIn145 = True
 
+            [twilio_sid, twilio_auth, twilio_phone, personal_phone] = get_information()
             client = Client(twilio_sid, twilio_auth)
 
             message = client.messages \
@@ -188,17 +198,18 @@ def get_information():
   return [twilio_sid, twilio_auth, twilio_phone, personal_phone]
 
 if __name__ == "__main__":
-    [twilio_sid, twilio_auth, twilio_phone, personal_phone] = get_information()
-
     while True:
         courses_to_enroll = [ ]
-        print("Checking if discussion is open for CS 161...")
-        getCS161(twilio_sid, twilio_auth, twilio_phone, personal_phone, courses_to_enroll)
-        print("Checking if discussion is open for CS 145...")
-        getCS145(twilio_sid, twilio_auth, twilio_phone, personal_phone, courses_to_enroll)
+        if(not gotIn161):
+            print("Checking if discussion is open for CS 161...")
+            getCS161()
+        if(not gotIn145):
+            print("Checking if discussion is open for CS 145...")
+            getCS145()
 
         if(len(courses_to_enroll) > 0):
             print("Enroll in: " + str(courses_to_enroll))
             register.register_for_courses(courses_to_enroll)
+            time.sleep(30)
 
         time.sleep(5)

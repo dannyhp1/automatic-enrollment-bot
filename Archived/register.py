@@ -18,7 +18,7 @@ def get_login_url():
   return login_url
 
 def login(ucinetid, password):
-  browser = Browser('chrome')
+  browser = Browser('chrome', incognito=True)
   browser.visit(get_login_url())
   browser.fill('ucinetid', ucinetid)
   browser.fill('password', password)
@@ -50,13 +50,9 @@ def register_for_courses(courses):
   try:
     [ucinetid, password] = get_information()
     browser = login(ucinetid, password)
-
     successful_enrollment = enroll(browser, courses)
     print('Successfully enrolled in: ' + str(successful_enrollment))
     browser.find_by_value('Logout').click()
-    browser.quit()
   
   except: 
     print('Errors have been thrown!')
-
-          
