@@ -1,11 +1,13 @@
 import urllib2
 import requests
+import ssl
 from splinter import Browser
 from bs4 import BeautifulSoup as bs
 
 def get_login_url():
   base_url = "https://www.reg.uci.edu/cgi-bin/webreg-redirect.sh"
-  file = urllib2.urlopen(base_url)
+  context = ssl._create_unverified_context()
+  file = urllib2.urlopen(base_url, context=context)
   content = file.read()
   soup = bs(content, 'html.parser')
 
@@ -53,7 +55,7 @@ def register_for_courses(courses):
     browser.find_by_value('Logout').click()
 
     return successful_enrollment
-  
-  except: 
+
+  except:
     print('Errors have been thrown!')
     return [ ]
