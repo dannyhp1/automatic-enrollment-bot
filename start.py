@@ -174,7 +174,7 @@ def watchCS145(courses_to_enroll):
         printNotification(discussion_code, lecture_code)
         discussion_open = True
         
-        message = "CS 161 is open! Lecture ({l_code}) and discussion ({d_code}).".format(l_code = lecture_code, d_code = discussion_code)
+        message = "CS 145 is open! Lecture ({l_code}) and discussion ({d_code}).".format(l_code = lecture_code, d_code = discussion_code)
         courses_to_enroll.append(discussion_code)
         courses_to_enroll.append(lecture_code)
 
@@ -197,19 +197,23 @@ if __name__ == '__main__':
 
   while(not cs161_enrolled or not cs145_enrolled):
     if(not cs161_enrolled):
+      print('Checking for CS161...')
       cs161_enrolled = watchCS161(courses_to_enroll)
 
       if(len(courses_to_enroll) > 0):
         successfully_enroll = enroll.register_for_courses(courses_to_enroll)
         sendNotification(successfully_enroll)
         courses_to_enroll = [ ]
+        time.sleep(10)
 
     if(not cs145_enrolled):
+      print('Checking for CS145...')
       cs145_enrolled = watchCS145(courses_to_enroll)
 
       if(len(courses_to_enroll) > 0):
         successfully_enroll = enroll.register_for_courses(courses_to_enroll)
-        sendNotification(successful_enroll)
+        sendNotification(successfully_enroll)
         courses_to_enroll = [ ]
+        time.sleep(10)
     
     time.sleep(2.5)

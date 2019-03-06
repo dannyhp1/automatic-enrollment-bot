@@ -2,6 +2,7 @@ import urllib2
 import requests
 import ssl
 from splinter import Browser
+from selenium import webdriver
 from bs4 import BeautifulSoup as bs
 
 def get_login_url():
@@ -18,6 +19,7 @@ def get_login_url():
   return login_url
 
 def login(ucinetid, password):
+  #driver = webdriver.Chrome('/home/dannyhp1/Desktop/automatic-enrollment/chromedriver')
   browser = Browser('chrome', incognito=True)
   browser.visit(get_login_url())
   browser.fill('ucinetid', ucinetid)
