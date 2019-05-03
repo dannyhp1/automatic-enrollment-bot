@@ -62,3 +62,5 @@ def register_for_courses(courses):
 
 if __name__ == '__main__':
     register_for_courses([ ])
+    while(1):
+        pass
