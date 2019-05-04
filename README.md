@@ -1,11 +1,10 @@
-# Automatic Enrollment
-A tool that enables students to specify which courses they'd like to enroll in. If the course is full, the tool will incrementally check if the course is open. If the course is open, the tool will automatically enroll the student in the course as well as send them a notification to their mobile device.
+# Automatic Enrollment Bot
+The automatic enrollment bot enables students to specify (full) courses that they'd like to enroll in. When there is an availability, the bot will automatically enroll the student in the course and send them a mobile notification upon successful enrollment. 
 
-# Usage
+# Features
+- Checking every few seconds to see if the course has an available spot. The time can be modified to increase the amount of checks per minute.
+- Send mobile notifications to the user if the bot successfully enrolled the student in the course or if the bot crashed.
 <img src="https://i.imgur.com/0xmnuxk.png" data-canonical-src="https://i.imgur.com/0xmnuxk.png" width="375" height="667" />
-Through Twilio's trial account, a notification will be sent to your mobile device when a course and its corresponding discussion section opens. 
-
-Automatic enrollment will attempt to enroll you in the course based on provided information. Through Twilio, you will receive another message on whether its successful or not.
 
 # Updates
-Automatic Enrollment is currently a work in progress. All courses are hardcoded at the moment for personal use.
+The bot is no longer a main priority. The idea behind the bot is currently being implemented in a custom web application (https://automatic-enrollment.dannyhp.com).
