@@ -1,5 +1,4 @@
-import urllib2
-import requests
+from urllib2 import urlopen
 import ssl
 from splinter import Browser
 from bs4 import BeautifulSoup as bs
@@ -7,7 +6,7 @@ from bs4 import BeautifulSoup as bs
 def get_login_url():
   base_url = "https://www.reg.uci.edu/cgi-bin/webreg-redirect.sh"
   context = ssl._create_unverified_context()
-  file = urllib2.urlopen(base_url, context=context)
+  file = urlopen(base_url)
   content = file.read()
   soup = bs(content, 'html.parser')
 
@@ -61,6 +60,4 @@ def register_for_courses(courses):
     return [ ]
 
 if __name__ == '__main__':
-    register_for_courses([ ])
-    while(1):
-        pass
+    register_for_courses([])
