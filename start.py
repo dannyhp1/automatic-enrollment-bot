@@ -190,30 +190,37 @@ def watchCS145(courses_to_enroll):
   return False
 
 if __name__ == '__main__':
-  courses_to_enroll = [ ]
+  if(True):
+    [twilio_sid, twilio_auth, twilio_phone, personal_phone] = get_information()
+    client = Client(twilio_sid, twilio_auth)
+    messages = ''
+    message = client.messages.create(body=messages, from_=twilio_phone, to=personal_phone)
 
-  cs161_enrolled = False
-  cs145_enrolled = False  
+  else:
+    courses_to_enroll = [ ]
 
-  while(not cs161_enrolled or not cs145_enrolled):
-    if(not cs161_enrolled):
-      print('Checking for CS161...')
-      cs161_enrolled = watchCS161(courses_to_enroll)
+    cs161_enrolled = False
+    cs145_enrolled = False  
 
-      if(len(courses_to_enroll) > 0):
-        successfully_enroll = enroll.register_for_courses(courses_to_enroll)
-        sendNotification(successfully_enroll)
-        courses_to_enroll = [ ]
-        time.sleep(10)
+    while(not cs161_enrolled or not cs145_enrolled):
+      if(not cs161_enrolled):
+        print('Checking for CS161...')
+        cs161_enrolled = watchCS161(courses_to_enroll)
 
-    if(not cs145_enrolled):
-      print('Checking for CS145...')
-      cs145_enrolled = watchCS145(courses_to_enroll)
+        if(len(courses_to_enroll) > 0):
+          successfully_enroll = enroll.register_for_courses(courses_to_enroll)
+          sendNotification(successfully_enroll)
+          courses_to_enroll = [ ]
+          time.sleep(10)
 
-      if(len(courses_to_enroll) > 0):
-        successfully_enroll = enroll.register_for_courses(courses_to_enroll)
-        sendNotification(successfully_enroll)
-        courses_to_enroll = [ ]
-        time.sleep(10)
-    
-    time.sleep(2.5)
+      if(not cs145_enrolled):
+        print('Checking for CS145...')
+        cs145_enrolled = watchCS145(courses_to_enroll)
+
+        if(len(courses_to_enroll) > 0):
+          successfully_enroll = enroll.register_for_courses(courses_to_enroll)
+          sendNotification(successfully_enroll)
+          courses_to_enroll = [ ]
+          time.sleep(10)
+      
+      time.sleep(2.5)

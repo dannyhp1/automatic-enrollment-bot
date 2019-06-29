@@ -38,6 +38,17 @@ def enroll(browser, courses):
 
   return success_courses
 
+def waitlist(browser, courses):
+  waitlist_courses = [ ]
+  browser.find_by_value('Wait list Menu').click()
+
+  for i in range(len(courses)):
+    browser.choose('mode', 'add')
+    browser.fill('courseCode', courses[i])
+    browser.find_by_value('Send Request').click()
+    
+  return waitlist_courses
+
 def get_information():
   file = open("user_information.txt")
   ucinetid = file.readline().strip()
@@ -58,6 +69,3 @@ def register_for_courses(courses):
   except:
     print('Errors have been thrown!')
     return [ ]
-
-if __name__ == '__main__':
-    register_for_courses([])
