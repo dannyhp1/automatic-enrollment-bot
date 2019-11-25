@@ -1,30 +1,33 @@
 import time
-import urllib2
+from urllib.request import urlopen
 from twilio.rest import Client
 from bs4 import BeautifulSoup as bs
 import enroll
 
-cs161_url = "https://www.reg.uci.edu/perl/WebSoc?YearTerm=2019-14&CoCourse=34210"
-cs145_url = "https://www.reg.uci.edu/perl/WebSoc?YearTerm=2019-1&CoCourse=34160"
+# Base URL for UCI's schedule of classes.
+webreg_base = 'https://www.reg.uci.edu/perl/WebSoc?YearTerm={year}{quarter}&ShowComments=on&ShowFinals=on&Breadth=ANY&Dept={dept}&CourseNum={course_number}&Division=ANY&CourseCodes=&InstrName=&CourseTitle=&ClassType=ALL&Units=&Days=&StartTime=&EndTime=&MaxCap=&FullCourses=ANY&FontSize=100&CancelledCourses=Exclude&Bldg=&Room='
+fall_quarter = '-92'
+winter_quarter = '-03'
+spring_quarter = '-14'
 
-def printNotification(discussion_code, lecture_code):
-  print("Discussion ({d_code}) is open with lecture ({l_code}).".format(d_code = discussion_code, l_code = lecture_code))
-
-def sendNotification(successful_courses):
-  [twilio_sid, twilio_auth, twilio_phone, personal_phone] = get_information()
-  
-  message = ''
-
-  if(len(successful_courses) > 0):
-    message = 'Successfully enrolled in: {courses}'.format(courses = successful_courses)
-  else:
-    message = 'Failed to enroll in any courses. Program crashed.'
+def sendErrorNotification(message):
+  [twilio_sid, twilio_auth, twilio_phone, personal_phone, christina_phone] = get_information()
 
   client = Client(twilio_sid, twilio_auth)
   send_message = client.messages.create(body=message, from_=twilio_phone, to=personal_phone)
 
+def sendNotification(successful_enroll, successful_waitlist):
+  [twilio_sid, twilio_auth, twilio_phone, personal_phone, christina_phone] = get_information()
+  
+  message = 'Successfully enrolled in: {enroll}, waitlisted in: {waitlist}'.format(enroll = successful_enroll, waitlist = successful_waitlist)
+
+  client = Client(twilio_sid, twilio_auth)
+  send_message = client.messages.create(body=message, from_=twilio_phone, to=personal_phone)
+  send_message = client.messages.create(body=message, from_=twilio_phone, to=christina_phone)
+
 
 def get_information():
+  # Store twilio authentication information and personal number in a file.
   file = open("twilio_information.txt")
   twilio_sid = file.readline().strip()
   twilio_auth = file.readline().strip()
@@ -34,193 +37,116 @@ def get_information():
 
   return [twilio_sid, twilio_auth, twilio_phone, personal_phone]
 
-def watchCS161(courses_to_enroll):
-  file = urllib2.urlopen(cs161_url)
-  content = file.read()
-  file.close()
-
-  soup = bs(content, 'html.parser')
-
-  divs = soup.find_all('div')
-  course_list = ''
-
-  for div in divs:
-      classes = div.get('class')
-      if(classes != None):
-          for item in div.get('class'):
-              if(item == 'course-list'):
-                  course_list = div
-
-  rows = course_list.find_all('tr')
-  cs161 = [ ]
-
-  for row in rows:
-      align = row.get('valign')
-      if(align != None):
-          code = ""
-          class_type = ""
-          max_enroll = -1
-          enroll = -1
-          status = ""
-
-          max_columns = 0
-
-          for i, td in enumerate(row.find_all('td')):
-              if(i == 0):
-                  code = td.getText()
-              elif(i == 1):
-                  class_type = td.getText()
-              elif(i == 7):
-                  max_enroll = td.getText()
-              elif(i == 8):
-                  enroll = td.getText()
-              elif(i == 15):
-                  status = td.getText()
-              max_columns = i
-          
-          if(i >= 15):
-              cs161.append([code, class_type, enroll, max_enroll, status])
-
-  # cs161 now stores a list of lists (courses). The first item in the list is the lecture.
-  amount = len(cs161)
-  lecture = cs161[0]
-
-  lecture_code = lecture[0]
-  lecture_status = lecture[4] != 'FULL'
+def parse_course(year, quarter, dept, course_number):
+  # Course dept. needs to be reparsed due to json data.
+  parsed_dept = dept.replace(' ', '%20') if dept != None else None
+  course_url = webreg_base.format(year=year, quarter=quarter, dept=parsed_dept, course_number=course_number)
   
-  discussion_open = False
+  page = urlopen(course_url)
+  content = page.read()
+  page.close()
 
-  for i in range(1, amount):
-    discussion_code = cs161[i][0]
-    discussion_status = cs161[i][4] != 'FULL'
-    if(discussion_status and lecture_status):
-      printNotification(discussion_code, lecture_code)
-      discussion_open = True            
-      
-      message = "CS 161 is open! Lecture ({l_code}) and discussion ({d_code}).".format(l_code = lecture_code, d_code = discussion_code)
-      courses_to_enroll.append(discussion_code)
-      courses_to_enroll.append(lecture_code)
-
-      [twilio_sid, twilio_auth, twilio_phone, personal_phone] = get_information()
-      client = Client(twilio_sid, twilio_auth)
-      message = client.messages.create(body=message, from_=twilio_phone, to=personal_phone)
-
-      return True
-
-  if(discussion_open == False):
-      print("No discussions were opened for CS 161.")
-
-  return False
-
-def watchCS145(courses_to_enroll):
-  file = urllib2.urlopen(cs145_url)
-  content = file.read()
-  file.close()
-
+  # Create a bs object for the content.
   soup = bs(content, 'html.parser')
 
-  divs = soup.find_all('div')
-  course_list = ""
+  table_rows = soup.find_all('tr')
+  valid_rows = [ ]
 
-  for div in divs:
-      classes = div.get('class')
-      if(classes != None):
-          for item in div.get('class'):
-              if(item == 'course-list'):
-                  course_list = div
+  # On webreg, the course info is within tables and have valign = top.
+  for row in table_rows:
+      valign = row.get('valign')
+      if(valign != None and valign == 'top'):
+          valid_rows.append(row)
 
-  rows = course_list.find_all('tr')
-  cs145 = [ ]
+  # There will be no table shown if the course does not exist or is not available.
+  if(len(valid_rows) <= 0):
+      return None, [ ]
 
-  for row in rows:
-      align = row.get('valign')
-      if(align != None):
-          code = ""
-          class_type = ""
-          max_enroll = -1
-          enroll = -1
-          status = ""
+  # The row in the table consists of the course information.
+  course_information = valid_rows[0]
+  course_name = None
 
-          max_columns = 0
+  for td in course_information.find_all('td'):
+      if('CourseTitle' in td.get('class')):
+          course_name = td.getText()
+  
+  course_list = valid_rows[1:]
+  courses = [ ]
 
-          for i, td in enumerate(row.find_all('td')):
-              if(i == 0):
-                  code = td.getText()
-              elif(i == 1):
-                  class_type = td.getText()
-              elif(i == 7):
-                  max_enroll = td.getText()
-              elif(i == 8):
-                  enroll = td.getText()
-              elif(i == 15):
-                  status = td.getText()
-              max_columns = i
-          
-          if(i >= 15):
-              cs145.append([code, class_type, enroll, max_enroll, status])
+  # Iterate through all the remaining rows to get information.
+  for course in course_list:
+      course_information = [ ]
+      
+      for i, td in enumerate(course.find_all('td')):
+          if(i == 0 or i == 1 or i == 4 or i == 5 or i == 8 or i == 13 or i == 16):
+              # 0 = course code, 1 = course type, 4 = instructor, 8 = maximum, 9 = enrolled, 16 = status.
+              course_information.append(td.getText())
+          elif(i == 9):
+              # Current availability may differ if sections are crossed.
+              text = td.getText().split(' ')
+              course_information.append(text[-1])
 
-  amount = len(cs145)
-  lecture = cs145[0]
+      courses.append(course_information)
 
-  lecture_code = lecture[0]
-  lecture_status = lecture[4] != 'FULL'
+  # All of the valid courses should have 6 attributes (listed above).
+  courses = [course for course in courses if len(course) == 8]
 
-  discussion_open = False
+  return course_name, courses
 
-  for i in range(1, amount):
-      discussion_code = cs145[i][0]
-      discussion_status = cs145[i][4] != 'FULL'
-      if(discussion_status and lecture_status and i not in [1, 3, 5, 7]):
-        printNotification(discussion_code, lecture_code)
-        discussion_open = True
-        
-        message = "CS 145 is open! Lecture ({l_code}) and discussion ({d_code}).".format(l_code = lecture_code, d_code = discussion_code)
-        courses_to_enroll.append(discussion_code)
-        courses_to_enroll.append(lecture_code)
+# This method is simply for an example to validate a course (CS 161 in this case).
+def validate_cs161(sections, enroll, waitlist):
+  # You can also check if courses are restricted and such in this validation method.
+  lecture = sections[0]
+  discussions = sections[1:]
 
-        [twilio_sid, twilio_auth, twilio_phone, personal_phone] = get_information()
-        client = Client(twilio_sid, twilio_auth)
-        message = client.messages.create(body=message, from_=twilio_phone, to=personal_phone)
+  # Should only add lecture/discussion if lecture is not full.
+  if(lecture[7].strip() != 'FULL'):
+    if(lecture[7].strip() == 'OPEN'):
+      # Lecture is OPEN.
+      for discussion in discussions:
+        if(discussion[7].strip() == 'OPEN'):
+          enroll.append(lecture[0])
+          enroll.append(discussion[0])
+          return
+    else:
+      # Lecture is WAITL.
+      for discussion in discussions:
+        if(discussion[7].strip() == 'Waitl'):
+          waitlist.append(lecture[0])
+          waitlist.append(discussion[0])
+          return
 
-        return True
-
-  if(discussion_open == False):
-      print("No discussions were opened for CS 145.")
-
-  return False
+  return
 
 if __name__ == '__main__':
-  if(True):
-    [twilio_sid, twilio_auth, twilio_phone, personal_phone] = get_information()
-    client = Client(twilio_sid, twilio_auth)
-    messages = ''
-    message = client.messages.create(body=messages, from_=twilio_phone, to=personal_phone)
+  try:
+    enroll_courses = [ ]
+    waitlist_courses = [ ]
 
-  else:
-    courses_to_enroll = [ ]
+    enrolled = False
 
-    cs161_enrolled = False
-    cs145_enrolled = False  
+    while(not enrolled):
+      print('Automatic enrollment in process...')
 
-    while(not cs161_enrolled or not cs145_enrolled):
-      if(not cs161_enrolled):
-        print('Checking for CS161...')
-        cs161_enrolled = watchCS161(courses_to_enroll)
+      # Get list of all courses.
+      # e.g. CS 161 for Winter 2020:
+      cs161 = parse_course('2020', winter_quarter, 'COMPSCI', '161')[1]
 
-        if(len(courses_to_enroll) > 0):
-          successfully_enroll = enroll.register_for_courses(courses_to_enroll)
-          sendNotification(successfully_enroll)
-          courses_to_enroll = [ ]
-          time.sleep(10)
+      # Create a validation method that will check if the lecture/discussion is open for enrollment.
+      # Pass in enroll_courses and waitlist_courses; method should append into these lists if section is open.
+      validate_cs161(cs161, enroll_courses, waitlist_courses)
 
-      if(not cs145_enrolled):
-        print('Checking for CS145...')
-        cs145_enrolled = watchCS145(courses_to_enroll)
+      if(len(enroll_courses) >= 1 or len(waitlist_courses) >= 1):
+        enrolled = True
 
-        if(len(courses_to_enroll) > 0):
-          successfully_enroll = enroll.register_for_courses(courses_to_enroll)
-          sendNotification(successfully_enroll)
-          courses_to_enroll = [ ]
-          time.sleep(10)
-      
-      time.sleep(2.5)
+        # Attempt to enroll and waitlist in courses.
+        success_enroll, success_waitlist = enroll.register_for_courses(enroll_courses, waitlist_courses)
+        if(len(success_enroll) == 0 and len(success_waitlist) == 0):
+          sendErrorNotification('Failed to enroll in: ' + str(enroll_courses) + ', and failed to waitlist in: ' + str(waitlist_courses))
+        else:
+          sendNotification(success_enroll, success_waitlist)
+
+      # Set the time: how many seconds between each time the bot checks the enrollment.
+      time.sleep(10)
+  except Exception as e:
+    sendErrorNotification('Automatic enrollment has crashed with exception: ' + e)

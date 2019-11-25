@@ -1,4 +1,4 @@
-from urllib2 import urlopen
+from urllib.request import urlopen
 import ssl
 from splinter import Browser
 from bs4 import BeautifulSoup as bs
