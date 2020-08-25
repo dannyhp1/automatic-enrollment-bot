@@ -11,19 +11,18 @@ winter_quarter = '-03'
 spring_quarter = '-14'
 
 def sendErrorNotification(message):
-  [twilio_sid, twilio_auth, twilio_phone, personal_phone, christina_phone] = get_information()
+  [twilio_sid, twilio_auth, twilio_phone, personal_phone] = get_information()
 
   client = Client(twilio_sid, twilio_auth)
   send_message = client.messages.create(body=message, from_=twilio_phone, to=personal_phone)
 
 def sendNotification(successful_enroll, successful_waitlist):
-  [twilio_sid, twilio_auth, twilio_phone, personal_phone, christina_phone] = get_information()
+  [twilio_sid, twilio_auth, twilio_phone, personal_phone] = get_information()
   
   message = 'Successfully enrolled in: {enroll}, waitlisted in: {waitlist}'.format(enroll = successful_enroll, waitlist = successful_waitlist)
 
   client = Client(twilio_sid, twilio_auth)
   send_message = client.messages.create(body=message, from_=twilio_phone, to=personal_phone)
-  send_message = client.messages.create(body=message, from_=twilio_phone, to=christina_phone)
 
 
 def get_information():
